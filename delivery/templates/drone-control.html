@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Control</title>
+</head>
+<body>
+    <h1>Control Drone with Arrow Keys</h1>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/drone_control/');
+
+        socket.onopen = function(e) {
+            console.log("WebSocket connection established");
+        };
+
+        socket.onmessage = function(e) {
+            console.log("Message from server:", e.data);
+        };
+
+        socket.onclose = function(e) {
+            console.error("WebSocket closed unexpectedly");
+        };
+
+        document.addEventListener('keydown', function(event) {
+            let command;
+            switch (event.key) {
+                case 'ArrowUp':
+                    command = 'forward';
+                    break;
+                case 'ArrowDown':
+                    command = 'backward';
+                    break;
+                case 'ArrowLeft':
+                    command = 'left';
+                    break;
+                case 'ArrowRight':
+                    command = 'right';
+                    break;
+                case 'w':  // Up
+                    command = 'up';
+                    break;
+                case 's':  // Down
+                    command = 'down';
+                    break;
+                default:
+                    command = null;
+            }
+
+            if (command) {
+                socket.send(JSON.stringify({'command': command}));
+            }
+        });
+    </script>
+</body>
+</html>

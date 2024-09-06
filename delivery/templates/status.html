@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Delivery Status</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="text-center">Drone Delivery Status</h1>
+    
+    <!-- Map Container -->
+    <div id="map" style="height: 400px; margin-bottom: 20px;"></div>
+
+    <!-- Status Information -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Delivery Information</h5>
+            <p class="card-text" id="status">Loading...</p>
+            <p class="card-text"><strong>Current Location:</strong> <span id="current-location">N/A</span></p>
+            <p class="card-text"><strong>Battery Level:</strong> <span id="battery-level">N/A</span></p>
+            <p class="card-text"><strong>Mission Status:</strong> <span id="mission-status">N/A</span></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize the map
+    var map = L.map('map').setView([47.641468, -122.140165], 13);  // Default location
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var droneMarker = L.marker([47.641468, -122.140165]).addTo(map)
+        .bindPopup('Drone Location');
+
+    function updateStatus() {
+        $.get('/track_drone_status/', function(data) {
+            if (data.location) {
+                var latLng = [data.location.lat, data.location.lon];
+                droneMarker.setLatLng(latLng);
+                map.setView(latLng);
+
+                $('#current-location').text(`Lat: ${data.location.lat}, Lon: ${data.location.lon}`);
+            }
+
+            if (data.battery) {
+                $('#battery-level').text(`${data.battery}%`);
+            }
+
+            if (data.mission_status) {
+                $('#mission-status').text(data.mission_status);
+            }
+
+            $('#status').text('Status updated successfully');
+        }).fail(function() {
+            $('#status').text('Failed to update status');
+        });
+    }
+
+    // Fetch status every 5 seconds
+    setInterval(updateStatus, 5000);
+
+    // Initial status update
+    updateStatus();
+</script>
+</body>
+</html>

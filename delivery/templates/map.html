@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Delivery System</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center mt-5">Drone Delivery System</h1>
+    <div id="map" style="height: 400px; margin-bottom: 20px;"></div>
+    
+    <form id="location-form">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="pickup-lat">Pickup Latitude</label>
+            <input type="text" class="form-control" id="pickup-lat" placeholder="Enter pickup latitude">
+        </div>
+        <div class="form-group">
+            <label for="pickup-lon">Pickup Longitude</label>
+            <input type="text" class="form-control" id="pickup-lon" placeholder="Enter pickup longitude">
+        </div>
+        <div class="form-group">
+            <label for="delivery-lat">Delivery Latitude</label>
+            <input type="text" class="form-control" id="delivery-lat" placeholder="Enter delivery latitude">
+        </div>
+        <div class="form-group">
+            <label for="delivery-lon">Delivery Longitude</label>
+            <input type="text" class="form-control" id="delivery-lon" placeholder="Enter delivery longitude">
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="check-weather" checked>
+            <label class="form-check-label" for="check-weather">Check Weather Conditions</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="check-terrain" checked>
+            <label class="form-check-label" for="check-terrain">Check Terrain Conditions</label>
+        </div>
+        
+        <button type="button" id="check-conditions-btn" class="btn btn-warning">Check Conditions</button>
+        <button type="button" id="takeoff-btn" class="btn btn-success" disabled>Initiate Takeoff</button>
+    </form>
+
+    <div id="status-info" class="mt-4"></div>
+</div>
+
+<script>
+    // Initialize the map
+    var map = L.map('map').setView([47.641468, -122.140165], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var droneMarker = L.marker([47.641468, -122.140165], {draggable: false}).addTo(map)
+        .bindPopup('Drone Location');
+    var flightPath = L.polyline([], {color: 'blue'}).addTo(map);
+
+    var pickupMarker = L.marker([47.641468, -122.140165], {draggable: true}).addTo(map)
+        .bindPopup('Pickup Location')
+        .on('dragend', function(e) {
+            var latLng = e.target.getLatLng();
+            document.getElementById('pickup-lat').value = latLng.lat;
+            document.getElementById('pickup-lon').value = latLng.lng;
+        });
+
+    var deliveryMarker = L.marker([47.641468, -122.140165], {draggable: true}).addTo(map)
+        .bindPopup('Delivery Location')
+        .on('dragend', function(e) {
+            var latLng = e.target.getLatLng();
+            document.getElementById('delivery-lat').value = latLng.lat;
+            document.getElementById('delivery-lon').value = latLng.lng;
+        });
+
+    $('#check-conditions-btn').click(function () {
+        const pickupLat = $('#pickup-lat').val();
+        const pickupLon = $('#pickup-lon').val();
+        const deliveryLat = $('#delivery-lat').val();
+        const deliveryLon = $('#delivery-lon').val();
+        const checkWeather = $('#check-weather').is(':checked');
+        const checkTerrain = $('#check-terrain').is(':checked');
+
+        if (pickupLat && pickupLon && deliveryLat && deliveryLon) {
+            $.post('/check_conditions/', {
+                pickup_lat: pickupLat,
+                pickup_lon: pickupLon,
+                delivery_lat: deliveryLat,
+                delivery_lon: deliveryLon,
+                check_weather: checkWeather,
+                check_terrain: checkTerrain,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            }, function (data) {
+                if (data.suitable) {
+                    $('#status-info').html('<div class="alert alert-success">Conditions are good for flight!</div>');
+                    $('#takeoff-btn').prop('disabled', false);
+                } else {
+                    $('#status-info').html('<div class="alert alert-danger">Conditions are not suitable for flight! Reason(s): ' + data.reasons.join(', ') + '</div>');
+                }
+            });
+        } else {
+            alert("Please set both pickup and delivery locations.");
+        }
+    });
+
+    $('#takeoff-btn').click(function () {
+        $.post('/takeoff/', {
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function (data) {
+            alert(data.status);
+            if (data.status === 'Drone taken off') {
+                startTrackingDrone();  // Start tracking after takeoff
+            }
+        });
+    });
+
+    function startTrackingDrone() {
+        // Poll the drone status every few seconds
+        setInterval(function () {
+            $.get('/track_drone_status/', function (data) {
+                if (data.location) {
+                    const lat = data.location.lat;
+                    const lon = data.location.lon;
+                    droneMarker.setLatLng([lat, lon]);
+                    flightPath.addLatLng([lat, lon]);  // Update flight path
+                }
+            });
+        }, 3000);  // Poll every 3 seconds
+    }
+</script>
+</body>
+</html>
