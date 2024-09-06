@@ -117,7 +117,9 @@ Make sure this file is placed in the root directory of your AirSim project.
 ## Troubleshooting
 
 - **Connection Issues:**
-  Ensure that AirSim and PX4 are running properly and that the IP address and port configurations match.
+    Ensure that AirSim and PX4 are running properly and that the IP address and port configurations match.
+    Ensure that the IP address and port configurations are correctly set in both the AirSim and Django configurations.
+    Check for network issues or firewall settings that may block communication between the AirSim server and the Django web application.
 
 - **Battery Level Errors:**
 # this is being simulated on your views.py
